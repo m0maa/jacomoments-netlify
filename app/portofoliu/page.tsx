@@ -1,10 +1,10 @@
 import { Metadata } from 'next'
 import dynamic from 'next/dynamic'
 
-// Dynamically import Gallery with SSR disabled
-const GalleryNoSSR = dynamic(() => import('@/components/Gallery'), { ssr: false })
-const NavigationNoSSR = dynamic(() => import('@/components/Navigation'), { ssr: false })
-const FooterNoSSR = dynamic(() => import('@/components/Footer'), { ssr: false })
+// Dynamically import components
+const Gallery = dynamic(() => import('@/components/Gallery'))
+const Navigation = dynamic(() => import('@/components/Navigation'))
+const Footer = dynamic(() => import('@/components/Footer'))
 
 export const metadata: Metadata = {
   title: 'Portofoliu | Jaco Moments - Fotograf Nuntă',
@@ -21,11 +21,11 @@ export const metadata: Metadata = {
 export default function PortfolioPage() {
   return (
     <>
-      <NavigationNoSSR />
+      <Navigation />
       <main className="min-h-screen bg-primary text-secondary">
-        <GalleryNoSSR />
+        <Gallery />
       </main>
-      <FooterNoSSR />
+      <Footer />
     </>
   )
 }
