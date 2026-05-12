@@ -9,7 +9,7 @@ async function main() {
     update: {},
     create: {
       username: 'admin',
-      password: 'admin123', // In production, use bcrypt!
+      password: 'Admin123', // In production, use bcrypt!
     },
   })
 

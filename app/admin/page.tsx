@@ -15,6 +15,7 @@ import {
   Tag as TagIcon,
   Eye,
   EyeOff,
+  KeyRound,
 } from 'lucide-react'
 
 interface Photo {
@@ -52,6 +53,14 @@ export default function AdminPage() {
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null)
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set())
   const [bulkUploadFiles, setBulkUploadFiles] = useState<FileList | null>(null)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
 
   // Fetch photos
   const fetchPhotos = async () => {
@@ -251,6 +260,56 @@ export default function AdminPage() {
     }
   }
 
+  // Change password handler
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordSuccess('')
+
+    // Validate passwords match
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('New passwords do not match')
+      return
+    }
+
+    // Validate new password length
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: 'admin',
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        setPasswordSuccess('Password changed successfully!')
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+        setTimeout(() => {
+          setShowPasswordModal(false)
+          setPasswordSuccess('')
+        }, 2000)
+      } else {
+        setPasswordError(data.error || 'Failed to change password')
+      }
+    } catch (error) {
+      setPasswordError('Failed to change password')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Login screen
   if (!isAuthenticated) {
     return (
@@ -297,13 +356,22 @@ export default function AdminPage() {
       <header className="bg-secondary text-primary py-4 px-6 shadow-lg">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">Jaco Moments Admin</h1>
-          <button
-            onClick={() => setIsAuthenticated(false)}
-            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded hover:bg-accent-hover transition-colors"
-          >
-            <LogOut size={18} />
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="flex items-center gap-2 px-4 py-2 border border-accent text-accent rounded hover:bg-accent hover:text-white transition-colors"
+            >
+              <KeyRound size={18} />
+              Change Password
+            </button>
+            <button
+              onClick={() => setIsAuthenticated(false)}
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded hover:bg-accent-hover transition-colors"
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -625,6 +693,119 @@ export default function AdminPage() {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Change Password Modal */}
+      <AnimatePresence>
+        {showPasswordModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+            onClick={() => setShowPasswordModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-secondary rounded-lg p-6 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-primary">Change Password</h2>
+                <button
+                  onClick={() => {
+                    setShowPasswordModal(false)
+                    setPasswordError('')
+                    setPasswordSuccess('')
+                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                {passwordError && (
+                  <div className="p-3 bg-red-100 text-red-700 rounded text-sm">
+                    {passwordError}
+                  </div>
+                )}
+
+                {passwordSuccess && (
+                  <div className="p-3 bg-green-100 text-green-700 rounded text-sm">
+                    {passwordSuccess}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-bold mb-1">Current Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) =>
+                      setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                    }
+                    required
+                    className="w-full px-3 py-2 border rounded focus:outline-none focus:border-accent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold mb-1">New Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) =>
+                      setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                    }
+                    required
+                    minLength={6}
+                    className="w-full px-3 py-2 border rounded focus:outline-none focus:border-accent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold mb-1">Confirm New Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                    }
+                    required
+                    minLength={6}
+                    className="w-full px-3 py-2 border rounded focus:outline-none focus:border-accent"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPasswordModal(false)
+                      setPasswordError('')
+                      setPasswordSuccess('')
+                      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                    }}
+                    className="px-4 py-2 border rounded hover:bg-gray-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 bg-accent text-white rounded hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {loading ? 'Changing...' : 'Change Password'}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}
