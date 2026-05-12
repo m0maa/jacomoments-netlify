@@ -1,13 +1,47 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import Image from 'next/image'
 import Link from 'next/link'
-import staticPhotos from '@/data/static-photos.json'
+
+interface Photo {
+  id: string
+  filename: string
+  url: string
+  category: string
+}
 
 export default function GalleryPreview() {
-  const previewPhotos = useMemo(() => staticPhotos.photos.slice(0, 6), [])
+  const [photos, setPhotos] = useState<Photo[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      try {
+        const res = await fetch('/api/photos?featured=true')
+        const data = await res.json()
+        // If no featured photos, just get the first 6
+        const photosToShow = data.length > 0 ? data.slice(0, 6) : []
+        setPhotos(photosToShow)
+      } catch (error) {
+        console.error('Error fetching preview photos:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPhotos()
+  }, [])
+
+  if (loading) {
+    return (
+      <section id="portofoliu" className="relative py-32 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <div className="inline-block w-12 h-12 border-4 border-secondary border-t-accent rounded-full animate-spin" />
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section id="portofoliu" className="relative py-32 px-4">
@@ -33,25 +67,31 @@ export default function GalleryPreview() {
         </motion.div>
 
         {/* Gallery Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-          {previewPhotos.map((photo, index) => (
-            <motion.div
-              key={`${photo.filename}-${index}`}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-              className="relative aspect-square overflow-hidden group"
-            >
-              <img
-                src={photo.url}
-                alt={photo.category}
-                className="object-cover transition-transform duration-700 group-hover:scale-110 w-full h-full"
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </motion.div>
-          ))}
-        </div>
+        {photos.length === 0 ? (
+          <div className="text-center py-20 text-secondary/60">
+            <p>Nu există poze în portofoliu momentan.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {photos.map((photo, index) => (
+              <motion.div
+                key={photo.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="relative aspect-square overflow-hidden group"
+              >
+                <img
+                  src={photo.url}
+                  alt={photo.category}
+                  className="object-cover transition-transform duration-700 group-hover:scale-110 w-full h-full"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </motion.div>
+            ))}
+          </div>
+        )}
 
         {/* CTA */}
         <motion.div

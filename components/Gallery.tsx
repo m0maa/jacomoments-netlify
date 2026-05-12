@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import Image from 'next/image'
-import staticPhotos from '@/data/static-photos.json'
 
 interface Photo {
+  id: string
   filename: string
-  category: string
   url: string
+  category: string
+  title?: string
+  description?: string
+  tags: { id: string; name: string }[]
 }
 
 interface Category {
@@ -21,15 +23,34 @@ const categoryNames: Record<string, string> = {
   'nunta': 'Nunți',
   'botez': 'Botezuri',
   'sedinta': 'Ședințe Foto',
-  'evenimente': 'Evenimente',
+  'eveniment': 'Evenimente',
 }
 
 export default function Gallery() {
+  const [photos, setPhotos] = useState<Photo[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
 
+  // Fetch photos from API
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      try {
+        const res = await fetch('/api/photos')
+        const data = await res.json()
+        setPhotos(data)
+      } catch (error) {
+        console.error('Error fetching photos:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPhotos()
+  }, [])
+
   const categories: Category[] = useMemo(() => {
-    const uniqueCategories = new Set(staticPhotos.photos.map(p => p.category))
+    const uniqueCategories = new Set(photos.map(p => p.category))
     return [
       { id: 'all', name: 'Toate', slug: 'all' },
       ...Array.from(uniqueCategories).map((slug): Category => ({
@@ -38,14 +59,25 @@ export default function Gallery() {
         slug,
       })),
     ]
-  }, [])
+  }, [photos])
 
   const currentPhotos: Photo[] = useMemo(() => {
     if (selectedCategory === 'all') {
-      return staticPhotos.photos
+      return photos
     }
-    return staticPhotos.photos.filter(p => p.category === selectedCategory)
-  }, [selectedCategory])
+    return photos.filter(p => p.category === selectedCategory)
+  }, [selectedCategory, photos])
+
+  if (loading) {
+    return (
+      <section className="relative min-h-screen py-32 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block w-12 h-12 border-4 border-secondary border-t-accent rounded-full animate-spin" />
+          <p className="mt-4 text-secondary">Se încarcă galeria...</p>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="relative min-h-screen py-32 px-4">
@@ -89,27 +121,33 @@ export default function Gallery() {
         </motion.div>
 
         {/* Gallery Grid */}
-        <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
-          {currentPhotos.map((photo, index) => (
-            <motion.div
-              key={`${photo.filename}-${index}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03 }}
-              className="relative overflow-hidden group cursor-pointer"
-              onClick={() => setLightboxImage(photo.url)}
-            >
-              <div className="relative aspect-[4/5] overflow-hidden">
-                <img
-                  src={photo.url}
-                  alt={photo.category}
-                  className="object-cover transition-transform duration-700 group-hover:scale-110 w-full"
-                />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        {currentPhotos.length === 0 ? (
+          <div className="text-center py-20 text-secondary/60">
+            <p>Nu există poze în această categorie momentan.</p>
+          </div>
+        ) : (
+          <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
+            {currentPhotos.map((photo, index) => (
+              <motion.div
+                key={photo.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.03 }}
+                className="relative overflow-hidden group cursor-pointer"
+                onClick={() => setLightboxImage(photo.url)}
+              >
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <img
+                    src={photo.url}
+                    alt={photo.title || photo.category}
+                    className="object-cover transition-transform duration-700 group-hover:scale-110 w-full"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
 
         {/* Lightbox */}
         {lightboxImage && (
